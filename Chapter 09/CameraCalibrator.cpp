@@ -1,149 +1,134 @@
-/*------------------------------------------------------------------------------------------*\
-   This file contains material supporting chapter 9 of the cookbook:  
-   Computer Vision Programming using the OpenCV Library. 
-   by Robert Laganiere, Packt Publishing, 2011.
-
-   This program is free software; permission is hereby granted to use, copy, modify, 
-   and distribute this source code, or portions thereof, for any purpose, without fee, 
-   subject to the restriction that the copyright notice may not be removed 
-   or altered from any source or altered source distribution. 
-   The software is released on an as-is basis and without any warranties of any kind. 
-   In particular, the software is not guaranteed to be fault-tolerant or free from failure. 
-   The author disclaims all warranties with regard to this software, any use, 
-   and any consequent failure, is purely the responsibility of the user.
- 
-   Copyright (C) 2010-2011 Robert Laganiere, www.laganiere.name
-\*------------------------------------------------------------------------------------------*/
-
 #include "CameraCalibrator.h"
 
-// Open chessboard images and extract corner points
+// 打开棋盘图像并提取角点
 int CameraCalibrator::addChessboardPoints(
-         const std::vector<std::string>& filelist, 
-         cv::Size & boardSize) {
-
-	// the points on the chessboard
+    const std::vector<std::string> &filelist,
+    cv::Size &boardSize)
+{
+    // 棋盘上的点的两种坐标
     std::vector<cv::Point2f> imageCorners;
     std::vector<cv::Point3f> objectCorners;
 
-    // 3D Scene Points:
-    // Initialize the chessboard corners 
-    // in the chessboard reference frame
-	// The corners are at 3D location (X,Y,Z)= (i,j,0)
-	for (int i=0; i<boardSize.height; i++) {
-		for (int j=0; j<boardSize.width; j++) {
-
-			objectCorners.push_back(cv::Point3f(i, j, 0.0f));
-		}
+    // 3D场景中的点:
+    // 在棋盘坐标系中初始化棋盘角点
+    // 这些点位于 (X,Y,Z)= (i,j,0)
+    for (int i = 0; i < boardSize.height; i++)
+    {
+        for (int j = 0; j < boardSize.width; j++)
+        {
+            objectCorners.push_back(cv::Point3f(i, j, 0.0f));
+        }
     }
 
-    // 2D Image points:
-    cv::Mat image; // to contain chessboard image
+    // 2D图像中的点:
+    cv::Mat image; // 用来保存棋盘图像
     int successes = 0;
-    // for all viewpoints
-    for (int i=0; i<filelist.size(); i++) {
 
-        // Open the image
-        image = cv::imread(filelist[i],0);
+    // 循环所有图片
+    for (int i = 0; i < filelist.size(); i++)
+    {
+        // 打开图像
+        image = cv::imread(filelist[i], 0);
 
-        // Get the chessboard corners
-        bool found = cv::findChessboardCorners(
-                        image, boardSize, imageCorners);
+        // 得到棋盘角点
+        bool found = cv::findChessboardCorners(image, boardSize, imageCorners);
 
-        // Get subpixel accuracy on the corners
-        cv::cornerSubPix(image, imageCorners, 
-                  cv::Size(5,5), 
-                  cv::Size(-1,-1), 
-			cv::TermCriteria(cv::TermCriteria::MAX_ITER +
-                          cv::TermCriteria::EPS, 
-             30,		// max number of iterations 
-             0.1));     // min accuracy
+        // 获取亚像素精度
+        cv::cornerSubPix(image, imageCorners,
+                         cv::Size(5, 5),
+                         cv::Size(-1, -1),
+                         cv::TermCriteria(cv::TermCriteria::MAX_ITER +
+                                          cv::TermCriteria::EPS,
+                                          30,        // 最大迭代数目
+                                          0.1));     // 最小精度
 
-          // If we have a good board, add it to our data
-		  if (imageCorners.size() == boardSize.area()) {
-
-			// Add image and scene points from one view
+        // 如果角点数目满足要要求，那么将它加入数据
+        if (imageCorners.size() == boardSize.area())
+        {
+            // 添加一个视角中的图像点及场景点
             addPoints(imageCorners, objectCorners);
             successes++;
-          }
+        }
 
-        //Draw the corners
+        // 绘制角点
+		// found 已经找到角点
         cv::drawChessboardCorners(image, boardSize, imageCorners, found);
+
+		// 显示
         cv::imshow("Corners on Chessboard", image);
         cv::waitKey(100);
     }
 
-	return successes;
+    return successes;
 }
 
-// Add scene points and corresponding image points
-void CameraCalibrator::addPoints(const std::vector<cv::Point2f>& imageCorners, const std::vector<cv::Point3f>& objectCorners) {
+// 添加场景点与对应的图像点
+void CameraCalibrator::addPoints(const std::vector<cv::Point2f> &imageCorners, const std::vector<cv::Point3f> &objectCorners)
+{
+    // 2D图像点
+    imagePoints.push_back(imageCorners);
 
-	// 2D image points from one view
-	imagePoints.push_back(imageCorners);          
-	// corresponding 3D scene points
-	objectPoints.push_back(objectCorners);
+    // 对应3D场景中的点
+    objectPoints.push_back(objectCorners);
 }
 
-// Calibrate the camera
-// returns the re-projection error
+// 进行标定，返回重投影误差
 double CameraCalibrator::calibrate(cv::Size &imageSize)
 {
-	// undistorter must be reinitialized
-	mustInitUndistort= true;
+    // 必须重新进行去畸变
+    mustInitUndistort = true;
 
-	//Output rotations and translations
+    //输出旋转和平移
     std::vector<cv::Mat> rvecs, tvecs;
 
-	// start calibration
-	return 
-     calibrateCamera(objectPoints, // the 3D points
-		            imagePoints,  // the image points
-					imageSize,    // image size
-					cameraMatrix, // output camera matrix
-					distCoeffs,   // output distortion matrix
-					rvecs, tvecs, // Rs, Ts 
-					flag);        // set options
-//					,CV_CALIB_USE_INTRINSIC_GUESS);
+    // 开始标定
+    return
+        calibrateCamera(objectPoints, // 3D点
+                        imagePoints,  // 图像点
+                        imageSize,    // 图像尺寸
+                        cameraMatrix, // 图像尺寸
+                        distCoeffs,   // 输出的相机矩阵
+                        rvecs, tvecs, // 旋转和平移
+                        flag);        // 额外选项
+    //                  ,CV_CALIB_USE_INTRINSIC_GUESS);
 
 }
 
-// remove distortion in an image (after calibration)
-cv::Mat CameraCalibrator::remap(const cv::Mat &image) {
+// 标定后去除图像中的畸变
+cv::Mat CameraCalibrator::remap(const cv::Mat &image)
+{
+    cv::Mat undistorted;
 
-	cv::Mat undistorted;
+    if (mustInitUndistort)   // 每次标定只需要初始化一次
+    {
+        cv::initUndistortRectifyMap(
+            cameraMatrix,  // 计算得到的相机矩阵
+            distCoeffs,    // 计算得到的畸变矩阵
+            cv::Mat(),     // 可选的rectification矩阵(此处为空)
+            cv::Mat(),     // 用于生成undistorted对象的相机矩阵
+            cv::Size(640, 480), // image.size(), undistorted对象的尺寸
+            CV_32FC1,      // 输出映射图像的类型
+            map1, map2);   // x坐标和y坐标映射函数
 
-	if (mustInitUndistort) { // called once per calibration
-    
-		cv::initUndistortRectifyMap(
-			cameraMatrix,  // computed camera matrix
-            distCoeffs,    // computed distortion matrix
-            cv::Mat(),     // optional rectification (none) 
-			cv::Mat(),     // camera matrix to generate undistorted
-			cv::Size(640,480),
-//            image.size(),  // size of undistorted
-            CV_32FC1,      // type of output map
-            map1, map2);   // the x and y mapping functions
+        mustInitUndistort = false;
+    }
 
-		mustInitUndistort= false;
-	}
+    // 应用映射函数
+    cv::remap(image, undistorted, map1, map2,
+              cv::INTER_LINEAR); // 插值类型
 
-	// Apply mapping functions
-    cv::remap(image, undistorted, map1, map2, 
-		cv::INTER_LINEAR); // interpolation type
-
-	return undistorted;
+    return undistorted;
 }
 
 
 // Set the calibration options
 // 8radialCoeffEnabled should be true if 8 radial coefficients are required (5 is default)
 // tangentialParamEnabled should be true if tangeantial distortion is present
-void CameraCalibrator::setCalibrationFlag(bool radial8CoeffEnabled, bool tangentialParamEnabled) {
-
+void CameraCalibrator::setCalibrationFlag(bool radial8CoeffEnabled, bool tangentialParamEnabled)
+{
     // Set the flag used in cv::calibrateCamera()
     flag = 0;
     if (!tangentialParamEnabled) flag += CV_CALIB_ZERO_TANGENT_DIST;
-	if (radial8CoeffEnabled) flag += CV_CALIB_RATIONAL_MODEL;
+    if (radial8CoeffEnabled) flag += CV_CALIB_RATIONAL_MODEL;
 }
 

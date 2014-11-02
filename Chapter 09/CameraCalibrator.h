@@ -1,20 +1,3 @@
-/*------------------------------------------------------------------------------------------*\
-   This file contains material supporting chapter 9 of the cookbook:  
-   Computer Vision Programming using the OpenCV Library. 
-   by Robert Laganiere, Packt Publishing, 2011.
-
-   This program is free software; permission is hereby granted to use, copy, modify, 
-   and distribute this source code, or portions thereof, for any purpose, without fee, 
-   subject to the restriction that the copyright notice may not be removed 
-   or altered from any source or altered source distribution. 
-   The software is released on an as-is basis and without any warranties of any kind. 
-   In particular, the software is not guaranteed to be fault-tolerant or free from failure. 
-   The author disclaims all warranties with regard to this software, any use, 
-   and any consequent failure, is purely the responsibility of the user.
- 
-   Copyright (C) 2010-2011 Robert Laganiere, www.laganiere.name
-\*------------------------------------------------------------------------------------------*/
-
 #ifndef CAMERACALIBRATOR_H
 #define CAMERACALIBRATOR_H
 
@@ -26,37 +9,53 @@
 #include "opencv2/calib3d/calib3d.hpp"
 #include <opencv2/highgui/highgui.hpp>
 
-class CameraCalibrator {
-
-	// input points
+class CameraCalibrator
+{
+    // 输入点
+	// 位于世界座标的点
     std::vector<std::vector<cv::Point3f>> objectPoints;
+
+	// 像素座标点
     std::vector<std::vector<cv::Point2f>> imagePoints;
-    // output Matrices
+
+    // 输出矩阵
     cv::Mat cameraMatrix;
     cv::Mat distCoeffs;
-	// flag to specify how calibration is done
-	int flag;
-	// used in image undistortion 
-    cv::Mat map1,map2; 
-	bool mustInitUndistort;
 
-  public:
-	CameraCalibrator() : flag(0), mustInitUndistort(true) {};
+    // 标定方式
+    int flag;
 
-	// Open the chessboard images and extract corner points
-	int addChessboardPoints(const std::vector<std::string>& filelist, cv::Size & boardSize);
-	// Add scene points and corresponding image points
-    void addPoints(const std::vector<cv::Point2f>& imageCorners, const std::vector<cv::Point3f>& objectCorners);
-	// Calibrate the camera
-	double calibrate(cv::Size &imageSize);
-    // Set the calibration flag
-    void setCalibrationFlag(bool radial8CoeffEnabled=false, bool tangentialParamEnabled=false);
-	// Remove distortion in an image (after calibration)
-	cv::Mat remap(const cv::Mat &image);
+    // 用于图像去畸变
+    cv::Mat map1, map2;
+    bool mustInitUndistort;
+
+public:
+    CameraCalibrator() : flag(0), mustInitUndistort(true) {};
+
+    // 打开棋盘图像并提取角点
+    int addChessboardPoints(const std::vector<std::string> &filelist, cv::Size &boardSize);
+
+    // 增加场景点和对应的图像点
+    void addPoints(const std::vector<cv::Point2f> &imageCorners, const std::vector<cv::Point3f> &objectCorners);
+
+    // 相机标定
+    double calibrate(cv::Size &imageSize);
+
+    // 设置相机标定方式
+    void setCalibrationFlag(bool radial8CoeffEnabled = false, bool tangentialParamEnabled = false);
+
+    // 标定后去除图像中的畸变
+    cv::Mat CameraCalibrator::remap(const cv::Mat &image);
 
     // Getters
-    cv::Mat getCameraMatrix() { return cameraMatrix; }
-    cv::Mat getDistCoeffs()   { return distCoeffs; }
+    cv::Mat getCameraMatrix()
+    {
+        return cameraMatrix;
+    }
+    cv::Mat getDistCoeffs()
+    {
+        return distCoeffs;
+    }
 };
 
 #endif // CAMERACALIBRATOR_H

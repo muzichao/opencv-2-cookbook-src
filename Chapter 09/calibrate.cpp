@@ -1,20 +1,3 @@
-/*------------------------------------------------------------------------------------------*\
-   This file contains material supporting chapter 9 of the cookbook:  
-   Computer Vision Programming using the OpenCV Library. 
-   by Robert Laganiere, Packt Publishing, 2011.
-
-   This program is free software; permission is hereby granted to use, copy, modify, 
-   and distribute this source code, or portions thereof, for any purpose, without fee, 
-   subject to the restriction that the copyright notice may not be removed 
-   or altered from any source or altered source distribution. 
-   The software is released on an as-is basis and without any warranties of any kind. 
-   In particular, the software is not guaranteed to be fault-tolerant or free from failure. 
-   The author disclaims all warranties with regard to this software, any use, 
-   and any consequent failure, is purely the responsibility of the user.
- 
-   Copyright (C) 2010-2011 Robert Laganiere, www.laganiere.name
-\*------------------------------------------------------------------------------------------*/
-
 #include <iostream>
 #include <iomanip>
 #include <vector>
@@ -25,52 +8,59 @@
 
 #include "CameraCalibrator.h"
 
+using namespace std;
+using namespace cv;
+
 int main()
 {
+    namedWindow("Image");
+    Mat image;
+    vector<string> filelist; // 文件名列表
 
-	cv::namedWindow("Image");
-	cv::Mat image;
-	std::vector<std::string> filelist;
+    // 产生棋盘图像文件名列表
+    for (int i = 1; i <= 20; i++)
+    {
+        stringstream str;
+		// 产生文件名字符串
+        str << "E:/桌面资料/编程/openCV/opencv-2-cookbook-src-master/images/chessboards/chessboard" << setw(2) << setfill('0') << i << ".jpg";
+        cout << str.str() << endl;
 
-	// generate list of chessboard image filename
-	for (int i=1; i<=20; i++) {
+        filelist.push_back(str.str()); // 把字符串str.str()压入容器
+        image = imread(str.str(), 0); // 显示文件
+        imshow("Image", image);
 
-		std::stringstream str;
-		str << "../chessboards/chessboard" << std::setw(2) << std::setfill('0') << i << ".jpg";
-		std::cout << str.str() << std::endl;
+        waitKey(100);
+    }
 
-		filelist.push_back(str.str());
-		image= cv::imread(str.str(),0);
-		cv::imshow("Image",image);
-	
-		 cv::waitKey(100);
-	}
-
-	// Create calibrator object
+    // 创建标定对象
     CameraCalibrator cameraCalibrator;
-	// add the corners from the chessboard
-	cv::Size boardSize(6,4);
-	cameraCalibrator.addChessboardPoints(
-		filelist,	// filenames of chessboard image
-		boardSize);	// size of chessboard
-		// calibrate the camera
-    //	cameraCalibrator.setCalibrationFlag(true,true);
-	cameraCalibrator.calibrate(image.size());
 
-    // Image Undistortion
-    image = cv::imread(filelist[6]);
-	cv::Mat uImage= cameraCalibrator.remap(image);
+    // 棋盘角点（不包含边缘）
+    Size boardSize(6, 4);
 
-	// display camera matrix
-	cv::Mat cameraMatrix= cameraCalibrator.getCameraMatrix();
-	std::cout << " Camera intrinsic: " << cameraMatrix.rows << "x" << cameraMatrix.cols << std::endl;
-	std::cout << cameraMatrix.at<double>(0,0) << " " << cameraMatrix.at<double>(0,1) << " " << cameraMatrix.at<double>(0,2) << std::endl;
-	std::cout << cameraMatrix.at<double>(1,0) << " " << cameraMatrix.at<double>(1,1) << " " << cameraMatrix.at<double>(1,2) << std::endl;
-	std::cout << cameraMatrix.at<double>(2,0) << " " << cameraMatrix.at<double>(2,1) << " " << cameraMatrix.at<double>(2,2) << std::endl;
+	// filelist : 文件名列表
+	// boardSize : 棋盘角点个数
+	// 打开棋盘图像并提取角点
+    cameraCalibrator.addChessboardPoints(filelist, boardSize);
+
+    // 相机标定
+    //  cameraCalibrator.setCalibrationFlag(true,true);
+    cameraCalibrator.calibrate(image.size());
+
+    // 图像去畸变
+    image = imread(filelist[6]);
+    Mat uImage = cameraCalibrator.remap(image);
+
+    // 显示相机矩阵
+    Mat cameraMatrix = cameraCalibrator.getCameraMatrix();
+    cout << " Camera intrinsic: " << cameraMatrix.rows << "x" << cameraMatrix.cols << endl;
+    cout << cameraMatrix.at<double>(0, 0) << " " << cameraMatrix.at<double>(0, 1) << " " << cameraMatrix.at<double>(0, 2) << endl;
+    cout << cameraMatrix.at<double>(1, 0) << " " << cameraMatrix.at<double>(1, 1) << " " << cameraMatrix.at<double>(1, 2) << endl;
+    cout << cameraMatrix.at<double>(2, 0) << " " << cameraMatrix.at<double>(2, 1) << " " << cameraMatrix.at<double>(2, 2) << endl;
 
     imshow("Original Image", image);
     imshow("Undistorted Image", uImage);
 
-	cv::waitKey();
-	return 0;
+    waitKey();
+    return 0;
 }
